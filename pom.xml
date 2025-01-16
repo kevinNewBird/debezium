@@ -163,6 +163,7 @@
         <module>debezium-testing</module>
         <module>debezium-connect-rest-extension</module>
         <module>debezium-schema-generator</module>
+        <module>debezium-research</module>
     </modules>
 
     <distributionManagement>

@@ -97,11 +97,11 @@
         </dependency>
 
         <!-- Required by VerifyRecord -->
-        <dependency>
-            <groupId>io.confluent</groupId>
-            <artifactId>kafka-connect-avro-converter</artifactId>
-            <scope>test</scope>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.confluent</groupId>-->
+<!--            <artifactId>kafka-connect-avro-converter</artifactId>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
 
         <!-- Used for unit testing with Kafka -->
         <dependency>

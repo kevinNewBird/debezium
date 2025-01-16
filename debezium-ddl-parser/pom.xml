@@ -1,10 +1,11 @@
 <?xml version="1.0"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
         <version>1.9.7.Final</version>
-	<relativePath>../debezium-parent/pom.xml</relativePath>
+        <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-ddl-parser</artifactId>
@@ -59,6 +60,7 @@
 
     <build>
         <plugins>
+            <!--1.编译阶段使用, 生成class文件-->
             <plugin>
                 <groupId>org.antlr</groupId>
                 <artifactId>antlr4-maven-plugin</artifactId>
@@ -74,6 +76,40 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!--2.生成java类对象，便于调试-->
+            <!--            <plugin>-->
+            <!--                <groupId>org.antlr</groupId>-->
+            <!--                <artifactId>antlr4-maven-plugin</artifactId>-->
+            <!--                <version>${version.antlr}</version>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <id>antlr</id>-->
+            <!--                        <goals>-->
+            <!--                            <goal>antlr4</goal>-->
+            <!--                        </goals>-->
+            <!--                        <phase>none</phase>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--                <configuration>-->
+            <!--                    <arguments>-->
+            <!--                        &lt;!&ndash; 命令行参数 -package ${package} 定义生成java代码的包名&ndash;&gt;-->
+            <!--                        <argument>-package</argument>-->
+            <!--                        <argument>io.debezium.ddl.parser</argument>-->
+            <!--                        &lt;!&ndash; 输出生成的Java源码文件位置, 这里的输出文件夹定义一定要与上面 -package 定义的包名匹配 &ndash;&gt;-->
+            <!--                        <argument>-o</argument>-->
+            <!--                        <argument>${basedir}/gen</argument>-->
+            <!--                    </arguments>-->
+            <!--                    &lt;!&ndash;语法文件存放目录&ndash;&gt;-->
+            <!--                    <sourceDirectory>${antlr.source.directory}</sourceDirectory>-->
+            <!--                    &lt;!&ndash;是否生成listener&ndash;&gt;-->
+            <!--                    <listener>true</listener>-->
+            <!--                    &lt;!&ndash;是否生成visitor&ndash;&gt;-->
+            <!--                    <visitor>false</visitor>-->
+            <!--                    &lt;!&ndash;告警即视作错误，生成失败&ndash;&gt;-->
+            <!--                    <treatWarningsAsErrors>false</treatWarningsAsErrors>-->
+            <!--                </configuration>-->
+            <!--            </plugin>-->
         </plugins>
     </build>
     <profiles>

@@ -28,7 +28,7 @@ public class MysqlToFileStoreTest {
 
     static {
         String osType = System.getProperty("os.name");
-        if (StringUtils.contains(osType, "window")) {
+        if (StringUtils.containsIgnoreCase(osType, "window")) {
             DB_HOST = "192.168.1.53";
             DB_PWD = "Vbase@1234";
         } else {

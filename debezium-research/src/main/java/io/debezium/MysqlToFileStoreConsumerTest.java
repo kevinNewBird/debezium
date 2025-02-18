@@ -23,6 +23,9 @@ public class MysqlToFileStoreConsumerTest {
 
     private final static String DB_PWD;
 
+    private final static String STORAGE_FILE;
+
+    private final static String HISTORY_FILE;
 
     private static EmbeddedEngine engine;
 
@@ -33,9 +36,13 @@ public class MysqlToFileStoreConsumerTest {
         if (StringUtils.containsIgnoreCase(osType, "window")) {
             DB_HOST = "192.168.1.53";
             DB_PWD = "Vbase@1234";
+            STORAGE_FILE = "D:/tmp/dbz/storage/mysql_offsets.log";
+            HISTORY_FILE = "D:/tmp/dbz/storage/mysql_dbhistory.log";
         } else {
             DB_HOST = "10.211.55.20";
             DB_PWD = "root@123";
+            STORAGE_FILE = "/Users/zhaosong/workspace/logs/mysql_offsets.log";
+            HISTORY_FILE = "/Users/zhaosong/workspace/logs/mysql_dbhistory.log";
         }
     }
 
@@ -55,7 +62,7 @@ public class MysqlToFileStoreConsumerTest {
         props.setProperty("name", "dbz-engine");
         props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore");
         // 使用文件来存储已处理的binlog偏移量
-        props.setProperty("offset.storage.file.filename", "/Users/zhaosong/workspace/logs/mysql_offsets.log");
+        props.setProperty("offset.storage.file.filename", STORAGE_FILE);
         props.setProperty("offset.flush.interval.ms", "6000");
         props.setProperty("converter.schemas.enable", "true");
 
@@ -71,7 +78,7 @@ public class MysqlToFileStoreConsumerTest {
         props.setProperty("snapshot.mode", "schema_only");//全量+增量
         props.setProperty("decimal.handling.mode", "double");
         props.setProperty("database.history", "io.debezium.relational.history.FileDatabaseHistory");
-        props.setProperty("database.history.file.filename", "/Users/zhaosong/workspace/logs/mysql_dbhistory.log");
+        props.setProperty("database.history.file.filename", HISTORY_FILE);
 
         // 使用上述配置创建Debezium引擎，输出样式为Json字符串格式
         engine = new EmbeddedEngine.BuilderImpl()

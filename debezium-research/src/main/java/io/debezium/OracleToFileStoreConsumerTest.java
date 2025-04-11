@@ -4,12 +4,16 @@ import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.engine.DebeziumEngine;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
 
 import java.io.IOException;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * description: 监听mysql数据变化并记录到本地文件中，实现变更记录的自实现ChangeConsumer
@@ -17,7 +21,9 @@ import java.util.concurrent.TimeUnit;
  * create by: zhaosong 2025/1/16
  * version: 1.0
  */
-public class MysqlToFileStoreConsumerTest {
+public class OracleToFileStoreConsumerTest {
+
+    private static Logger log = Logger.getLogger(OracleToFileStoreConsumerTest.class);
 
     private final static String DB_HOST;
 
@@ -36,14 +42,16 @@ public class MysqlToFileStoreConsumerTest {
         if (StringUtils.containsIgnoreCase(osType, "window")) {
             DB_HOST = "192.168.1.53";
             DB_PWD = "Vbase@1234";
-            STORAGE_FILE = "D:/tmp/dbz/storage/mysql_offsets.log";
-            HISTORY_FILE = "D:/tmp/dbz/storage/mysql_dbhistory.log";
+            STORAGE_FILE = "D:/tmp/dbz/storage/oracle_offsets.log";
+            HISTORY_FILE = "D:/tmp/dbz/storage/oracle_dbhistory.log";
         } else {
-            DB_HOST = "192.168.231.150";
-            DB_PWD = "root@123";
-            STORAGE_FILE = "/Users/zhaosong/workspace/logs/mysql_offsets.log";
-            HISTORY_FILE = "/Users/zhaosong/workspace/logs/mysql_dbhistory.log";
+            DB_HOST = "192.168.231.155";
+            DB_PWD = "123456";
+            STORAGE_FILE = "/Users/zhaosong/workspace/logs/oracle_offsets.log";
+            HISTORY_FILE = "/Users/zhaosong/workspace/logs/oracle_dbhistory.log";
         }
+
+        PropertyConfigurator.configure(OracleToFileStoreConsumerTest.class.getClassLoader().getResource("log4j.properties"));
     }
 
     /*
@@ -67,16 +75,19 @@ public class MysqlToFileStoreConsumerTest {
         props.setProperty("converter.schemas.enable", "true");
 
         // 2.mysql connector的参数配置
-        props.setProperty("connector.class", "io.debezium.connector.mysql.MySqlConnector");
+        props.setProperty("connector.class", "io.debezium.connector.oracle.OracleConnector");
         props.setProperty("database.hostname", DB_HOST);
-        props.setProperty("database.port", "3306");
-        props.setProperty("database.user", "root");
+        props.setProperty("database.port", "1521");
+        props.setProperty("database.user", "system");
         props.setProperty("database.password", DB_PWD);
-        props.setProperty("database.server.id", "122110"); //随机设置
-        props.setProperty("database.server.name", "mysql-connector");
-        props.setProperty("database.include.list", "testdb");//要捕获的数据库名
+        props.setProperty("database.dbname", "ORCL");//要捕获的数据库名
+        props.setProperty("database.server.name", "oracle-connector");
+        props.setProperty("topic.prefix", "oracle231_150");
+        props.setProperty("tasks.max","1");
         props.setProperty("snapshot.mode", "schema_only");//全量+增量
-        props.setProperty("decimal.handling.mode", "double");
+        props.setProperty("schema.include.list", "testdb");
+//        props.setProperty("schema.history.internal.kafka.bootstrap.servers","kafka:9092");
+//        props.setProperty("schema.history.internal.kafka.topic","schema-changes.inventory");
         props.setProperty("database.history", "io.debezium.relational.history.FileDatabaseHistory");
         props.setProperty("database.history.file.filename", HISTORY_FILE);
 
@@ -86,7 +97,7 @@ public class MysqlToFileStoreConsumerTest {
                 // 注意：自实现consumer并不会影响offset.storage和database.history的工作
                 // 可通过查看mysql_offsets.log的更新时间和文件内容进行佐证
                 .notifying(sourceChangeConsumer)
-                .using(MysqlToFileStoreConsumerTest.class.getClassLoader())
+                .using(OracleToFileStoreConsumerTest.class.getClassLoader())
                 .build();
 
         ExecutorService executor = Executors.newSingleThreadExecutor();

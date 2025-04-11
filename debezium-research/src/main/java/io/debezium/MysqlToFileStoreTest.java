@@ -37,7 +37,7 @@ public class MysqlToFileStoreTest {
             STORAGE_FILE = "D:/tmp/dbz/storage/mysql_offsets.log";
             HISTORY_FILE = "D:/tmp/dbz/storage/mysql_dbhistory.log";
         } else {
-            DB_HOST = "10.211.55.20";
+            DB_HOST = "192.168.231.150";
             DB_PWD = "root@123";
             STORAGE_FILE = "/Users/zhaosong/workspace/logs/mysql_offsets.log";
             HISTORY_FILE = "/Users/zhaosong/workspace/logs/mysql_dbhistory.log";
@@ -63,7 +63,7 @@ public class MysqlToFileStoreTest {
         props.setProperty("database.password", DB_PWD);
         props.setProperty("database.server.id", "122110"); //随机设置
         props.setProperty("database.server.name", "mysql-connector");
-        props.setProperty("database.include.list", "test");//要捕获的数据库名
+        props.setProperty("database.include.list", "testdb");//要捕获的数据库名
         props.setProperty("snapshot.mode", "schema_only");//全量+增量
         props.setProperty("decimal.handling.mode", "double");
         props.setProperty("database.history", "io.debezium.relational.history.FileDatabaseHistory");

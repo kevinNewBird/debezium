@@ -38,6 +38,17 @@
             <artifactId>debezium-connector-mysql</artifactId>
             <version>${debezium.version}</version>
         </dependency>
+        <!--引入debezium oracle连接器-->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-oracle</artifactId>
+            <version>${debezium.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>21.1.0.0</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
@@ -48,6 +59,11 @@
             <artifactId>junit</artifactId>
             <version>4.12</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
         </dependency>
     </dependencies>
 

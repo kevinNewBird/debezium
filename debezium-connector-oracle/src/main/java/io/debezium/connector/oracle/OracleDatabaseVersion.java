@@ -14,8 +14,9 @@ import java.util.regex.Pattern;
  * @author Chris Cranford
  */
 public class OracleDatabaseVersion {
+    // modify by zhaosong: .*无法匹配换行符导致匹配失败报错问题
     private final static Pattern VERSION_PATTERN = Pattern
-            .compile("(?:.*)(?:Release )([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:.*)");
+            .compile("(?:.*)(?:Release )([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:[\\s\\S]*)");
     private final static Pattern VERSION_18_1_PATTERN = Pattern
             .compile("(?:.*)(?:\\- Production(?:\\r\\n|\\r|\\n)(?:Version ))([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)");
 

@@ -4,16 +4,14 @@ import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.engine.DebeziumEngine;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PropertyConfigurator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * description: 监听mysql数据变化并记录到本地文件中，实现变更记录的自实现ChangeConsumer
@@ -23,7 +21,7 @@ import java.util.regex.Pattern;
  */
 public class OracleToFileStoreConsumerTest {
 
-    private static Logger log = Logger.getLogger(OracleToFileStoreConsumerTest.class);
+    private static Logger log = LogManager.getLogger(OracleToFileStoreConsumerTest.class);
 
     private final static String DB_HOST;
 
@@ -50,8 +48,6 @@ public class OracleToFileStoreConsumerTest {
             STORAGE_FILE = "/Users/zhaosong/workspace/logs/oracle_offsets.log";
             HISTORY_FILE = "/Users/zhaosong/workspace/logs/oracle_dbhistory.log";
         }
-
-        PropertyConfigurator.configure(OracleToFileStoreConsumerTest.class.getClassLoader().getResource("log4j.properties"));
     }
 
     /*
@@ -64,7 +60,6 @@ public class OracleToFileStoreConsumerTest {
      关信息。SinkRecord确保数据能够准确地写入目标系统，保持数据的一致性和完整性‌
     */
     public static void main(String[] args) throws Exception {
-
         final Properties props = new Properties();
         // 1.engine的参数设置
         props.setProperty("name", "dbz-engine");
@@ -83,7 +78,7 @@ public class OracleToFileStoreConsumerTest {
         props.setProperty("database.dbname", "ORCL");//要捕获的数据库名
         props.setProperty("database.server.name", "oracle-connector");// 用于获取前一个offset
         props.setProperty("topic.prefix", "oracle231_150");
-        props.setProperty("tasks.max","1");
+        props.setProperty("tasks.max", "1");
         props.setProperty("snapshot.mode", "schema_only");//全量+增量
         props.setProperty("schema.include.list", "testdb");
 //        props.setProperty("schema.history.internal.kafka.bootstrap.servers","kafka:9092");
@@ -92,13 +87,10 @@ public class OracleToFileStoreConsumerTest {
         props.setProperty("database.history.file.filename", HISTORY_FILE);
 
         // 使用上述配置创建Debezium引擎，输出样式为Json字符串格式
-        engine = new EmbeddedEngine.BuilderImpl()
-                .using(props)
+        engine = new EmbeddedEngine.BuilderImpl().using(props)
                 // 注意：自实现consumer并不会影响offset.storage和database.history的工作
                 // 可通过查看mysql_offsets.log的更新时间和文件内容进行佐证
-                .notifying(sourceChangeConsumer)
-                .using(OracleToFileStoreConsumerTest.class.getClassLoader())
-                .build();
+                .notifying(sourceChangeConsumer).using(OracleToFileStoreConsumerTest.class.getClassLoader()).build();
 
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(engine);

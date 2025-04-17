@@ -4,6 +4,8 @@ import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.engine.DebeziumEngine;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.Properties;
@@ -18,6 +20,8 @@ import java.util.concurrent.TimeUnit;
  * version: 1.0
  */
 public class MysqlToFileStoreConsumerTest {
+
+    private static Logger log = LogManager.getLogger(MysqlToFileStoreConsumerTest.class);
 
     private final static String DB_HOST;
 
@@ -56,7 +60,7 @@ public class MysqlToFileStoreConsumerTest {
      关信息。SinkRecord确保数据能够准确地写入目标系统，保持数据的一致性和完整性‌
     */
     public static void main(String[] args) throws Exception {
-
+        log.info("Starting MysqlToFileStoreConsumerTest");
         final Properties props = new Properties();
         // 1.engine的参数设置
         props.setProperty("name", "dbz-engine");

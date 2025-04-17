@@ -27,6 +27,7 @@ npm-debug.log
 phantomjsdriver.log
 
 generated-sources/
+logs/
 
 /state/
 bin/

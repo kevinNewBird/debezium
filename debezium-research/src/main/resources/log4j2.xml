@@ -20,7 +20,7 @@
         <Property name="log_pattern">[%d{yyyy-MM-dd HH:mm:ss.SSS}][%-5p][%T][%c.%M:%L] %msg%xEx%n</Property>
 <!--        <Property name="log_pattern">%msg%n</Property>-->
         <!-- 单个日志文件最大大小，单位可以是KB, MB or GB -->
-        <Property name="max_single_file_size">1KB</Property>
+        <Property name="max_single_file_size">100MB</Property>
     </Properties>
 
     <!-- 使用Appenders元素可以将日志事件数据写到各种目标位置（目前可以为控制台、文件、多种数据库API、远程套接字服务器、Apache Flume、

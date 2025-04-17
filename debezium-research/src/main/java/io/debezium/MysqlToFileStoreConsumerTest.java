@@ -65,6 +65,7 @@ public class MysqlToFileStoreConsumerTest {
         props.setProperty("offset.storage.file.filename", STORAGE_FILE);
         props.setProperty("offset.flush.interval.ms", "6000");
         props.setProperty("converter.schemas.enable", "true");
+        props.setProperty("test.disable.global.locking", "true");// 关闭快照创建时的全局锁
 
         // 2.mysql connector的参数配置
         props.setProperty("connector.class", "io.debezium.connector.mysql.MySqlConnector");

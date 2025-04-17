@@ -81,7 +81,7 @@ public class OracleToFileStoreConsumerTest {
         props.setProperty("database.user", "system");
         props.setProperty("database.password", DB_PWD);
         props.setProperty("database.dbname", "ORCL");//要捕获的数据库名
-        props.setProperty("database.server.name", "oracle-connector");
+        props.setProperty("database.server.name", "oracle-connector");// 用于获取前一个offset
         props.setProperty("topic.prefix", "oracle231_150");
         props.setProperty("tasks.max","1");
         props.setProperty("snapshot.mode", "schema_only");//全量+增量

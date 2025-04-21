@@ -23,16 +23,16 @@ public class OracleTableLockTest {
         for (int i = 1; i <= 190; i++) {
             schemaList.add(String.format(SCHEMA_TEMPLATE, i + ""));
         }
-        SCHEMA_TEMPLATE = "TESTDB.TABLE_%s";
-        for (int i = 1; i <= 20000; i++) {
-            schemaList.add(String.format(SCHEMA_TEMPLATE, i + ""));
-        }
+//        SCHEMA_TEMPLATE = "TESTDB.TABLE_%s";
+//        for (int i = 1; i <= 20000; i++) {
+//            schemaList.add(String.format(SCHEMA_TEMPLATE, i + ""));
+//        }
         SCHEMA_LIST = schemaList;
     }
 
     public static void main(String[] args) throws SQLException {
 //        testLockCommon(5);
-        testLockBatch(10);
+        testLockBatch(1);
     }
 
     private static void testLockBatch(int loop) {

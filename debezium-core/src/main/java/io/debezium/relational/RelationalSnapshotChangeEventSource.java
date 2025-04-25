@@ -87,6 +87,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         Connection connection = null;
         try {
+            long startTime = System.currentTimeMillis();
             LOGGER.info("Snapshot step 1 - Preparing");
 
             if (previousOffset != null && previousOffset.isSnapshotRunning()) {
@@ -140,6 +141,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             postSnapshot();
             dispatcher.alwaysDispatchHeartbeatEvent(ctx.partition, ctx.offset);
+            long endTime = System.currentTimeMillis();
+            LOGGER.info("Acquire Snapshot Spend Total Time: {} ms",(endTime - startTime));
             return SnapshotResult.completed(ctx.offset);
         }
         finally {

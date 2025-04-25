@@ -222,7 +222,7 @@
         值。LoggerConfig会被分配一个日志级别，通过level属性来指定。内建的日志级别按优先级从高到底排序有：OFF > FATAL >
         ERROR > WARN > INFO > DEBUG > TRACE > ALL，Log4j 2 也支持自定义的日志级别。
         -->
-        <Root level="ALL">
+        <Root level="INFO">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="InfoLogRollingFile"/>
             <AppenderRef ref="WarnLogRollingFile"/>

@@ -203,6 +203,15 @@
                 <updatePolicy>never</updatePolicy>
             </snapshots>
         </repository>
+        <repository>
+            <id>aliyun</id>
+            <name>Aliyun Nexus</name>
+            <url>http://maven.aliyun.com/nexus/content/groups/public</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
     </repositories>
 
     <build>
@@ -450,4 +459,5 @@
             </properties>
         </profile>
     </profiles>
+
 </project>

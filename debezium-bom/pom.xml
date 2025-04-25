@@ -137,16 +137,16 @@
                 <version>${version.kafka}</version>
                 <classifier>test</classifier>
             </dependency>
-            <dependency>
-                <groupId>io.confluent</groupId>
-                <artifactId>kafka-connect-avro-converter</artifactId>
-                <version>${version.confluent.platform}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.confluent</groupId>
-                <artifactId>kafka-connect-protobuf-converter</artifactId>
-                <version>${version.confluent.platform}</version>
-            </dependency>
+<!--            <dependency>-->
+<!--                <groupId>io.confluent</groupId>-->
+<!--                <artifactId>kafka-connect-avro-converter</artifactId>-->
+<!--                <version>${version.confluent.platform}</version>-->
+<!--            </dependency>-->
+<!--            <dependency>-->
+<!--                <groupId>io.confluent</groupId>-->
+<!--                <artifactId>kafka-connect-protobuf-converter</artifactId>-->
+<!--                <version>${version.confluent.platform}</version>-->
+<!--            </dependency>-->
             <dependency>
                 <groupId>io.apicurio</groupId>
                 <artifactId>apicurio-registry-utils-converter</artifactId>

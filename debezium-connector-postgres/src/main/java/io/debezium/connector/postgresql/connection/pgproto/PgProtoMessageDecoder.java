@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.function.Function;
 
+import io.debezium.connector.postgresql.proto.PgProto;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
@@ -21,9 +22,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
-import io.debezium.connector.postgresql.proto.PgProto;
-import io.debezium.connector.postgresql.proto.PgProto.Op;
-import io.debezium.connector.postgresql.proto.PgProto.RowMessage;
 import io.debezium.util.Collect;
 
 /**
@@ -36,7 +34,7 @@ import io.debezium.util.Collect;
 public class PgProtoMessageDecoder extends AbstractMessageDecoder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PgProtoMessageDecoder.class);
-    private static final Set<Op> SUPPORTED_OPS = Collect.unmodifiableSet(Op.INSERT, Op.UPDATE, Op.DELETE, Op.BEGIN, Op.COMMIT);
+    private static final Set<PgProto.Op> SUPPORTED_OPS = Collect.unmodifiableSet(PgProto.Op.INSERT, PgProto.Op.UPDATE, PgProto.Op.DELETE, PgProto.Op.BEGIN, PgProto.Op.COMMIT);
 
     private boolean warnedOnUnkownOp = false;
 
@@ -50,7 +48,7 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
             }
             final byte[] source = buffer.array();
             final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
-            final RowMessage message = PgProto.RowMessage.parseFrom(content);
+            final PgProto.RowMessage message = PgProto.RowMessage.parseFrom(content);
             LOGGER.trace("Received protobuf message from the server {}", message);
             if (!message.getNewTypeinfoList().isEmpty() && message.getNewTupleCount() != message.getNewTypeinfoCount()) {
                 throw new ConnectException(String.format("Message from transaction {} has {} data columns but only {} of type info",

@@ -28,6 +28,7 @@ phantomjsdriver.log
 
 generated-sources/
 logs/
+debezium_logs/
 
 /state/
 bin/

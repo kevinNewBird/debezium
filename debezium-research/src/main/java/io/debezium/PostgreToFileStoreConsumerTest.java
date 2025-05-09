@@ -79,7 +79,7 @@ public class PostgreToFileStoreConsumerTest {
         props.setProperty("database.server.name", "pg-connector");// 用于获取前一个offset
         props.setProperty("topic.prefix", "pg231_150");
         props.setProperty("tasks.max", "1");
-        props.setProperty("snapshot.mode", "never");// 不创建快照，只接受逻辑变更
+//        props.setProperty("snapshot.mode", "never");// 不创建快照，只接受逻辑变更
         props.setProperty("schema.include.list", "test");
         props.setProperty("slot.name","debezium_slot"); // 自动创建
         props.setProperty("plugin.name", "pgoutput");// decoderbufs不一定有效，默认建议使用pgoutput

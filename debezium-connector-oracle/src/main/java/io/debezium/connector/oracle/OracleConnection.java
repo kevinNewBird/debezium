@@ -338,10 +338,15 @@ public class OracleConnection extends JdbcConnection {
             }
 
             // The storage and segment attributes aren't necessary
+            // reference: https://www.cnblogs.com/yxysuanfa/p/7294431.html
+            // DBMS_METADATA.SESSION_TRANSFORM：表示当前会话
+            // 1.去除dbms_metadata.get_ddl获取到的ddl语句中的storage属性
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'STORAGE', false); end;");
+            // 2.去除dbms_metadata.get_ddl获取到的ddl语句中的segement属性
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SEGMENT_ATTRIBUTES', false); end;");
             // In case DDL is returned as multiple DDL statements, this allows the parser to parse each separately.
             // This is only critical during streaming as during snapshot the table structure is built from JDBC driver queries.
+            // 3.在获取到的ddl后面添加分号
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', true); end;");
             return queryAndMap("SELECT dbms_metadata.get_ddl('TABLE','" + tableId.table() + "','" + tableId.schema() + "') FROM DUAL", rs -> {
                 if (!rs.next()) {
@@ -353,6 +358,7 @@ public class OracleConnection extends JdbcConnection {
             });
         }
         finally {
+            // 4.恢复默认
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'DEFAULT'); end;");
         }
     }

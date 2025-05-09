@@ -703,6 +703,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
 
                 // Check if ALL COLUMNS supplemental logging is enabled for each captured table
+                // Optimize：使用map临时缓存，避免返回去查询数据库
+                long startTime = System.currentTimeMillis();
                 for (TableId tableId : schema.tableIds()) {
                     if (!connection.isTableExists(tableId)) {
                         LOGGER.warn("Database table '{}' no longer exists, supplemental log check skipped", tableId);
@@ -721,6 +723,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     }
                     checkTableColumnNameLengths(table);
                 }
+                long endTime = System.currentTimeMillis();
+                LOGGER.info("Exec to checkDatabaseAndTableState took {} ms", endTime - startTime);
             }
             else {
                 // ALL supplemental logging is enabled, now check table/column lengths

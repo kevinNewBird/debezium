@@ -1,9 +1,6 @@
 package io.test;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 public class PostgresTableLockTest {
 
     private static final long LOCK_TIMEOUT_SECONDS = TimeUnit.SECONDS.toMillis(10);
+    private static final String TX_ISOLATION_SQL = "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
     private static final String LOCK_TIMEOUT_SQL = "set lock_timeout = " + LOCK_TIMEOUT_SECONDS;
     private static final String LOCK_TEMPLATE = "LOCK TABLE %s IN ACCESS SHARE MODE";
     private static final List<String> SCHEMA_LIST;
@@ -52,12 +50,27 @@ public class PostgresTableLockTest {
             try (Connection conn = DriverManager.getConnection(url, username, password);) {
                 conn.setAutoCommit(false);
                 // 生成执行sql
-                Optional<String> optional = generateLockSql();
+//                Optional<String> optional = generateLockSql();
+                Optional<String> optional = generateTxSql();
                 if (!optional.isPresent()) {
                     return;
                 }
                 try (Statement stmt = conn.createStatement();) {
                     stmt.execute(optional.get());
+                }
+                DatabaseMetaData metaData = conn.getMetaData();
+                try (ResultSet rs = metaData.getTables("testdb", "test", null, new String[]{"VIEW", "MATERIALIZED VIEW", "TABLE", "PARTITIONED TABLE"});) {
+                    int index = 0;
+                    while (rs.next()) {
+                        String catalogName = rs.getString(1);
+                        String schemaName = rs.getString(2);
+                        String tableName = rs.getString(3);
+                        String tableType = rs.getString(4);
+                        if ("TABLE".equals(tableType) || "PARTITIONED TABLE".equals(tableType)) {
+                            System.out.printf("[%s] catalog: %s, schema:%s, table:%s, type:%s%n"
+                                    , ++index, catalogName, schemaName, tableName, tableType);
+                        }
+                    }
                 }
                 conn.rollback();
             } catch (SQLException e) {
@@ -69,6 +82,10 @@ public class PostgresTableLockTest {
         }
 
         System.out.printf("【x】%s次平均耗时：%sms%n", loop + "", totalTime / loop);
+    }
+
+    private static Optional<String> generateTxSql() {
+        return Optional.of(TX_ISOLATION_SQL);
     }
 
     private static Optional<String> generateLockSql() {

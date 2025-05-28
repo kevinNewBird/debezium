@@ -64,6 +64,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
         final TopicSelector<TableId> topicSelector = PostgresTopicSelector.create(connectorConfig);
         final Snapshotter snapshotter = connectorConfig.getSnapshotter();
+        // 默认是Avro格式规则调整器（将不满足avro规则的进行转换并记录历史转换过的，当冲突时抛出异常，即下划线+英文大小写字符组成）
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjustmentMode().createAdjuster();
 
         if (snapshotter == null) {

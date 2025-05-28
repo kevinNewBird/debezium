@@ -437,7 +437,9 @@ public class TypeRegistry {
 
         private SqlTypeMapper(PostgresConnection connection) throws SQLException {
             this.connection = connection;
+            // 获取pg支持的所有数据类型及其对应的SQL类型
             this.preloadedSqlTypes = Collect.unmodifiableSet(getTypeInfo(connection).getPGTypeNamesWithSQLTypes());
+            // 获取pg的类型名及其对应的类型值（比如数组2003，可变字符串12，其它1111等）
             this.sqlTypesByPgTypeNames = Collections.unmodifiableMap(getSqlTypes(connection));
         }
 

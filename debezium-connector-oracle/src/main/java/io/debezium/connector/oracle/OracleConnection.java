@@ -13,18 +13,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import io.debezium.relational.*;
+import io.debezium.util.Collect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,10 +28,6 @@ import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.relational.Column;
-import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.util.Strings;
 
@@ -96,16 +87,13 @@ public class OracleConnection extends JdbcConnection {
         try {
             statement = connection().createStatement();
             statement.execute("alter session set container=" + pdbName);
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new RuntimeException(e);
-        }
-        finally {
+        } finally {
             if (statement != null) {
                 try {
                     statement.close();
-                }
-                catch (SQLException e) {
+                } catch (SQLException e) {
                     LOGGER.error("Couldn't close statement", e);
                 }
             }
@@ -118,16 +106,13 @@ public class OracleConnection extends JdbcConnection {
         try {
             statement = connection().createStatement();
             statement.execute("alter session set container=cdb$root");
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new RuntimeException(e);
-        }
-        finally {
+        } finally {
             if (statement != null) {
                 try {
                     statement.close();
-                }
-                catch (SQLException e) {
+                } catch (SQLException e) {
                     LOGGER.error("Couldn't close statement", e);
                 }
             }
@@ -150,14 +135,12 @@ public class OracleConnection extends JdbcConnection {
                     }
                     return null;
                 });
-            }
-            catch (SQLException e) {
+            } catch (SQLException e) {
                 // exception ignored
                 if (e.getMessage().contains("ORA-00904: \"BANNER_FULL\"")) {
                     LOGGER.debug("BANNER_FULL column not in V$VERSION, using BANNER column as fallback");
                     versionStr = null;
-                }
-                else {
+                } else {
                     throw e;
                 }
             }
@@ -172,8 +155,7 @@ public class OracleConnection extends JdbcConnection {
                     return null;
                 });
             }
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new RuntimeException("Failed to resolve Oracle database version", e);
         }
 
@@ -207,7 +189,7 @@ public class OracleConnection extends JdbcConnection {
      */
     protected Set<TableId> getAllTableIds(String catalogName) throws SQLException {
         final String query = "select owner, table_name from all_tables " +
-        // filter special spatial tables
+                // filter special spatial tables
                 "where table_name NOT LIKE 'MDRT_%' " +
                 "and table_name NOT LIKE 'MDRS_%' " +
                 "and table_name NOT LIKE 'MDXT_%' " +
@@ -274,6 +256,273 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
+    public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
+                           Tables.TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
+            throws SQLException {
+        // Before we make any changes, get the copy of the set of table IDs ...
+        Set<TableId> tableIdsBefore = new HashSet<>(tables.tableIds());
+
+        // Read the metadata for the table columns ...
+        DatabaseMetaData metadata = connection().getMetaData();
+
+        // Find regular and materialized views as they cannot be snapshotted
+        final Set<TableId> viewIds = new HashSet<>();
+        final Set<TableId> tableIds = new HashSet<>();
+
+        int totalTables = 0;
+        try (final ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, supportedTableTypes())) {
+            while (rs.next()) {
+                final String catalogName = resolveCatalogName(rs.getString(1));
+                final String schemaName = rs.getString(2);
+                final String tableName = rs.getString(3);
+                final String tableType = rs.getString(4);
+                if (isTableType(tableType)) {
+                    totalTables++;
+                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    if (tableFilter == null || tableFilter.isIncluded(tableId)) {
+                        tableIds.add(tableId);
+                    }
+                } else {
+                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    viewIds.add(tableId);
+                }
+            }
+        }
+
+        Map<TableId, List<Column>> columnsByTable = new HashMap<>();
+
+        if (totalTables == tableIds.size() || config.getBoolean(RelationalDatabaseConnectorConfig.SNAPSHOT_FULL_COLUMN_SCAN_FORCE)) {
+            columnsByTable = getColumnsDetails(databaseCatalog, schemaNamePattern, null, tableFilter, columnFilter, metadata, viewIds);
+        } else {
+            for (TableId includeTable : tableIds) {
+                LOGGER.debug("Retrieving columns of table {}", includeTable);
+
+                Map<TableId, List<Column>> cols = getColumnsDetails(databaseCatalog, schemaNamePattern, includeTable.table(), tableFilter,
+                        columnFilter, metadata, viewIds);
+                columnsByTable.putAll(cols);
+            }
+        }
+
+        // Read the metadata for the primary keys ...
+//        for (Map.Entry<TableId, List<Column>> tableEntry : columnsByTable.entrySet()) {
+//            // First get the primary key information, which must be done for *each* table ...
+//            List<String> pkColumnNames = readPrimaryKeyOrUniqueIndexNames(metadata, tableEntry.getKey());
+//
+//            // Then define the table ...
+//            List<Column> columns = tableEntry.getValue();
+//            Collections.sort(columns);
+//            String defaultCharsetName = null; // JDBC does not expose character sets
+//            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName);
+//        }
+
+        List<Map.Entry<TableId, List<Column>>> colList = new ArrayList<>();
+        colList.addAll(columnsByTable.entrySet());
+
+        int batchSize = 100;
+        int batchCount = (colList.size() - colList.size() % batchSize) / batchSize;
+        if (colList.size() % batchSize != 0) {
+            batchCount++;
+        }
+
+        long startTime = System.currentTimeMillis();
+        Map<TableId, List<String>> tableIdentityCols = new HashMap<>();
+        int count = 0;
+        for (int i = 0; i < batchCount; i++) {
+            long innerTime = System.currentTimeMillis();
+            List<TableId> currBatch = new ArrayList<>();
+            int rowSize = (i + 1) * batchSize < colList.size() ? batchSize : colList.size() - i * batchSize;
+            for (int j = 0; j < rowSize; j++) {
+                currBatch.add(colList.get(i * batchSize + j).getKey());
+            }
+            String catalog = columnsByTable.keySet().stream().findAny().get().catalog();
+            Map<TableId, List<String>> currTableIdentityCols = readPrimaryKeyOrUniqueIndexNamesBatch(metadata, catalog, currBatch);
+            if (count++ % 50 == 0) {
+                LOGGER.info("[xxx] readSchema#readPrimaryKeyOrUniqueIndexNamesBatch spent once time: {} ms", System.currentTimeMillis() - innerTime);
+            }
+            tableIdentityCols.putAll(currTableIdentityCols);
+        }
+        LOGGER.info("[xxx] readSchema#readPrimaryKeyOrUniqueIndexNamesBatch spent total time: {} ms", System.currentTimeMillis() - startTime);
+
+        for (Map.Entry<TableId, List<Column>> tableEntry : columnsByTable.entrySet()) {
+            List<String> pkColumnNames = tableIdentityCols.getOrDefault(tableEntry.getKey(), new ArrayList<>());
+
+            List<Column> columns = tableEntry.getValue();
+            Collections.sort(columns);
+            String defaultCharsetName = null;
+            tables.overwriteTable(tableEntry.getKey(), columns, pkColumnNames, defaultCharsetName);
+        }
+        if (removeTablesNotFoundInJdbc) {
+            // Remove any definitions for tables that were not found in the database metadata ...
+            tableIdsBefore.removeAll(columnsByTable.keySet());
+            tableIdsBefore.forEach(tables::removeTable);
+        }
+    }
+
+
+    protected Map<TableId, List<String>> readPrimaryKeyOrUniqueIndexNamesBatch(DatabaseMetaData metadata, String catalog, List<TableId> ids) throws SQLException {
+        Map<TableId, List<String>> pkColumnNames = readPrimaryKeyNamesBatch(metadata, catalog, ids);
+        if (pkColumnNames.isEmpty()) {
+            return readTableUniqueIndicesBatch(metadata, catalog, ids);
+        } else if (pkColumnNames.size() == ids.size()) {
+            return pkColumnNames;
+        } else {
+            ids.removeAll(pkColumnNames.keySet());
+            return readTableUniqueIndicesBatch(metadata, catalog, ids);
+        }
+//        return readTableUniqueIndicesBatch(metadata, catalog, ids);
+    }
+
+
+    public Map<TableId, List<String>> readPrimaryKeyNamesBatch(DatabaseMetaData metadata, String catalog, List<TableId> ids) throws SQLException {
+        Map<TableId, List<String>> pkColumnNamesMap = new HashMap<>();
+        try (PreparedStatement ps = connection().prepareStatement(generatePrimaryKeySql(ids));
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                String schema = rs.getString(1);
+                String table = rs.getString(2);
+                String columnName = rs.getString(3);
+
+                pkColumnNamesMap.computeIfAbsent(new TableId(catalog, schema, table), k -> new ArrayList<>());
+                pkColumnNamesMap.computeIfPresent(new TableId(catalog, schema, table), (key, old) -> {
+                    old.add(columnName);
+                    return old;
+                });
+            }
+        }
+
+        return pkColumnNamesMap;
+    }
+
+    private String generatePrimaryKeySql(List<TableId> ids) {
+        String sql = "select \n" +
+                "  cc.OWNER AS TABLE_SCHEMA,\n" +
+                "  cc.TABLE_NAME,\n" +
+                "  cc.COLUMN_NAME,\n" +
+                "\tcc.POSITION\n" +
+                "from \n" +
+                "  ALL_CONS_COLUMNS cc\n" +
+                "\tJOIN \n" +
+                "\tALL_CONSTRAINTS c\n" +
+                "  ON (cc.OWNER = c.OWNER AND cc.TABLE_NAME = c.TABLE_NAME AND cc.CONSTRAINT_NAME = c.CONSTRAINT_NAME)\n" +
+                "where \n" +
+                "  c.CONSTRAINT_TYPE = 'P'";
+        StringJoiner outerWhere = new StringJoiner(" OR ", " AND (", ")");
+        for (TableId id : ids) {
+            StringJoiner innerWhere = new StringJoiner(" AND ", "(", ")");
+            innerWhere.add("c.OWNER = '" + id.schema() + "'");
+            innerWhere.add("c.TABLE_NAME = '" + id.table() + "'");
+            outerWhere.add(innerWhere.toString());
+        }
+
+        sql += outerWhere.toString();
+        return sql;
+    }
+
+    public Map<TableId, List<String>> readTableUniqueIndicesBatch(DatabaseMetaData metadata, String catalog, List<TableId> ids) throws SQLException {
+        Set<TableId> findIndexTables = new HashSet<>();
+        final Set<String> excludedIndexNames = new HashSet<>();
+        Map<TableId, List<String>> pkColumnNamesMap = new HashMap<>();
+
+        try (PreparedStatement ps = connection().prepareStatement(generateUniqueIndicesSql(ids));
+             ResultSet rs = ps.executeQuery()) {
+            String firstIndexName = null;
+            TableId lastTable = null;
+            while (rs.next()) {
+                String schema = rs.getString(1);
+                String table = rs.getString(2);
+                final String indexName = rs.getString(4);
+                final String columnName = rs.getString(6);
+//                final int columnIndex = rs.getInt(5);
+
+                TableId tableId = new TableId(catalog, schema, table);
+                if (lastTable == null) {
+                    lastTable = tableId;
+                }
+
+                if (findIndexTables.contains(tableId)) {
+                    continue;
+                }
+
+                // Some databases return a null index name record, often as the first row.
+                // This index should be ignored, as should any row with an index that has been marked excluded
+                if (indexName == null || excludedIndexNames.contains(indexName)) {
+                    continue;
+                }
+
+                // Check whether the index and/or its column is included by the connector
+                boolean indexIncluded = isTableUniqueIndexIncluded(indexName, columnName);
+                if (!indexIncluded) {
+                    // The connector considered the index and/or its column to be excluded.
+                    // Register the index as an excluded index.
+                    excludedIndexNames.add(indexName);
+
+                    if (firstIndexName == null || indexName.equals(firstIndexName)) {
+                        // We either have not yet found a valid first index or the index is the same as the
+                        // current index we have processed a column for. The later can happen when any
+                        // column after the first is seen as an excluded pattern, and in this case the
+                        // entire index state should be discarded and any future rows related to it will
+                        // also be discarded.
+                        firstIndexName = null;
+                        pkColumnNamesMap.remove(tableId);
+                        continue;
+                    }
+                }
+
+                if (firstIndexName == null) {
+                    firstIndexName = indexName;
+                }
+
+                if (!indexName.equals(firstIndexName)) {
+                    // This means we've reached a point in the result set where we've processed two index
+                    // mappings and both are included by the connector, so we return the first index we
+                    // completely mapped.
+                    findIndexTables.add(lastTable);
+                    lastTable = tableId;
+                }
+
+                if (columnName != null) {
+                    // The returned columnIndex is 0 when columnName is null. These are related
+                    // to table statistics that get returned as part of the index descriptors
+                    // and should be ignored.
+                    pkColumnNamesMap.computeIfAbsent(tableId, k -> new ArrayList<>());
+                    pkColumnNamesMap.computeIfPresent(tableId, (key, old) -> {
+                        old.add(columnName);
+                        return old;
+                    });
+                }
+            }
+        }
+        return pkColumnNamesMap;
+    }
+
+    private String generateUniqueIndicesSql(List<TableId> ids) {
+        String sql = "SELECT \n" +
+                "    i.OWNER AS TABLE_SCHEMA,\n" +
+                "    c.TABLE_NAME,\n" +
+                "    i.UNIQUENESS,\n" +
+                "    i.INDEX_NAME,\n" +
+                "    COLUMN_POSITION AS ORDINAL_POSITION,\n" +
+                "    COLUMN_NAME\n" +
+                "FROM \n" +
+                "    ALL_IND_COLUMNS c\n" +
+                "JOIN \n" +
+                "    ALL_INDEXES i ON (c.INDEX_NAME = i.INDEX_NAME \n" +
+                "                    AND c.TABLE_OWNER = i.TABLE_OWNER AND c.TABLE_NAME = i.TABLE_NAME)\n" +
+                "WHERE \n" +
+                "    UNIQUENESS = 'UNIQUE'";
+
+        StringJoiner outerWhere = new StringJoiner(" OR ", " AND (", ")");
+        for (TableId id : ids) {
+            StringJoiner innerWhere = new StringJoiner(" AND ", "(", ")");
+            innerWhere.add("c.TABLE_OWNER = '" + id.schema() + "'");
+            innerWhere.add("c.TABLE_NAME = '" + id.table() + "'");
+            outerWhere.add(innerWhere.toString());
+        }
+
+        sql += outerWhere.toString();
+        return sql;
+    }
+
     @Override
     protected String resolveCatalogName(String catalogName) {
         final String pdbName = config().getString("pdb.name");
@@ -305,7 +554,7 @@ public class OracleConnection extends JdbcConnection {
      * Get the current, most recent system change number.
      *
      * @return the current system change number
-     * @throws SQLException if an exception occurred
+     * @throws SQLException          if an exception occurred
      * @throws IllegalStateException if the query does not return at least one row
      */
     public Scn getCurrentScn() throws SQLException {
@@ -322,7 +571,7 @@ public class OracleConnection extends JdbcConnection {
      *
      * @param tableId table identifier, should never be {@code null}
      * @return generated DDL
-     * @throws SQLException if an exception occurred obtaining the DDL metadata
+     * @throws SQLException                if an exception occurred obtaining the DDL metadata
      * @throws NonRelationalTableException the table is not a relational table
      */
     public String getTableMetadataDdl(TableId tableId) throws SQLException, NonRelationalTableException {
@@ -356,8 +605,7 @@ public class OracleConnection extends JdbcConnection {
                 Object res = rs.getObject(1);
                 return ((Clob) res).getSubString(1, (int) ((Clob) res).length());
             });
-        }
-        finally {
+        } finally {
             // 4.恢复默认
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'DEFAULT'); end;");
         }
@@ -448,8 +696,7 @@ public class OracleConnection extends JdbcConnection {
                     .append(")")
                     .append(" WHERE ROWNUM <=")
                     .append(limit);
-        }
-        else {
+        } else {
             sql
                     .append(" ORDER BY ")
                     .append(orderBy)
@@ -479,15 +726,14 @@ public class OracleConnection extends JdbcConnection {
             final String mode = queryAndMap("SELECT LOG_MODE FROM V$DATABASE", rs -> rs.next() ? rs.getString(1) : "");
             LOGGER.debug("LOG_MODE={}", mode);
             return "ARCHIVELOG".equalsIgnoreCase(mode);
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new DebeziumException("Unexpected error while connecting to Oracle and looking at LOG_MODE mode: ", e);
         }
     }
 
     /**
      * Resolve a system change number to a timestamp, return value is in database timezone.
-     *
+     * <p>
      * The SCN to TIMESTAMP mapping is only retained for the duration of the flashback query area.
      * This means that eventually the mapping between these values are no longer kept by Oracle
      * and making a call with a SCN value that has aged out will result in an ORA-08181 error.
@@ -503,8 +749,7 @@ public class OracleConnection extends JdbcConnection {
             return queryAndMap("SELECT scn_to_timestamp('" + scn + "') FROM DUAL", rs -> rs.next()
                     ? Optional.of(rs.getObject(1, OffsetDateTime.class))
                     : Optional.empty());
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             if (e.getMessage().startsWith("ORA-08181")) {
                 // ORA-08181 specified number is not a valid system change number
                 // This happens when the SCN provided is outside the flashback area range
@@ -522,8 +767,7 @@ public class OracleConnection extends JdbcConnection {
         // output of the default value is within the same precision as that of the column values.
         if (OracleTypes.TIMESTAMP == column.jdbcType()) {
             column.length(column.scale().orElse(Column.UNSET_INT_VALUE)).scale(null);
-        }
-        else if (OracleTypes.NUMBER == column.jdbcType()) {
+        } else if (OracleTypes.NUMBER == column.jdbcType()) {
             column.scale().filter(s -> s == ORACLE_UNSET_SCALE).ifPresent(s -> column.scale(null));
         }
         return column;

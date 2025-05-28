@@ -80,7 +80,7 @@ public class OracleToFileStoreConsumerTest {
         props.setProperty("topic.prefix", "oracle231_150");
         props.setProperty("tasks.max", "1");
         props.setProperty("snapshot.mode", "schema_only");//全量+增量
-        props.setProperty("schema.include.list", "testdb");
+        props.setProperty("schema.include.list", "testdb_zs");
 //        props.setProperty("schema.history.internal.kafka.bootstrap.servers","kafka:9092");
 //        props.setProperty("schema.history.internal.kafka.topic","schema-changes.inventory");
         props.setProperty("database.history", "io.debezium.relational.history.FileDatabaseHistory");

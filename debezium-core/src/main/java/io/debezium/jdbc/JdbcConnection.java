@@ -319,7 +319,7 @@ public class JdbcConnection implements AutoCloseable {
         return url;
     }
 
-    private final JdbcConfiguration config;
+    protected final JdbcConfiguration config;
     private final ConnectionFactory factory;
     private final Operations initialOps;
     private final String openingQuoteCharacter;

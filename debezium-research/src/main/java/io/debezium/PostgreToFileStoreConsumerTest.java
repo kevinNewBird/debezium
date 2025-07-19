@@ -69,7 +69,7 @@ public class PostgreToFileStoreConsumerTest {
         props.setProperty("offset.flush.interval.ms", "6000");
         props.setProperty("converter.schemas.enable", "true");
 
-        // 2.mysql connector的参数配置
+        // 2.pg connector的参数配置
         props.setProperty("connector.class", "io.debezium.connector.postgresql.PostgresConnector");
         props.setProperty("database.hostname", DB_HOST);
         props.setProperty("database.port", "5432");
@@ -81,7 +81,9 @@ public class PostgreToFileStoreConsumerTest {
         props.setProperty("tasks.max", "1");
 //        props.setProperty("snapshot.mode", "never");// 不创建快照，只接受逻辑变更
         props.setProperty("schema.include.list", "test");
-        props.setProperty("slot.name","debezium_slot"); // 自动创建
+//        props.setProperty("schema.exclude.list", "pglogical");  // 排除不在范围内的schema， 但是其和schema.include.list只能存在一个
+        props.setProperty("slot.name","debezium_slot");
+        props.setProperty("publication.name", "pg_publication");
         props.setProperty("plugin.name", "pgoutput");// decoderbufs不一定有效，默认建议使用pgoutput
         // pg好像没有生效
 //        props.setProperty("database.history", "io.debezium.relational.history.FileDatabaseHistory");
